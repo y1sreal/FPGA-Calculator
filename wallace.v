@@ -66,3 +66,31 @@ module wallace(
 
 endmodule //wallace
 
+module mult16(input  [7:0] a,
+			  input  [7:0] b,
+			  output [15:0] p)
+			  
+	wire [7:0] p_0, p_1, p_2, p_3;
+	
+	wallace(a[3:0], b[3:0], p_0);
+	wallace(a[3:0], b[7:4], p_1);
+	wallace(a[7:4], b[3:0], p_2);
+	wallace(a[7:4], b[7:4], p_3);
+	
+	assign p = {8'b0, p_0} + {4'b0, p_1, 4'b0} + {4'b0, p_2, 4'b0} + {p_3, 8'b0};
+	
+endmodule //mult32
+
+module mult16(input  [15:0] a,
+			  input  [15:0] b,
+			  output [31:0] p)
+	wire [15:0] p_0, p_1, p_2, p_3;
+	
+	mult16(a[7:0], b[7:0], p_0);
+	mult16(a[7:0], b[15:8], p_1);
+	mult16(a[15:8], b[7:0], p_2);
+	mult16(a[15:8], b[15:8], p_3);
+	
+	assign p = {16'b0, p_0} + {8'b0, p_1, 8'b0} + {8'b0, p_2, 8'b0} + {p_3, 16'b0};
+endmodule //mult32
+
