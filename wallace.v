@@ -68,14 +68,14 @@ endmodule //wallace
 
 module mult8(input  [7:0] a,
 			  input  [7:0] b,
-			  output [15:0] p)
+			  output [15:0] p);
 			  
 	wire [7:0] p_0, p_1, p_2, p_3;
 	
-	wallace(a[3:0], b[3:0], p_0);
-	wallace(a[3:0], b[7:4], p_1);
-	wallace(a[7:4], b[3:0], p_2);
-	wallace(a[7:4], b[7:4], p_3);
+	wallace w1(a[3:0], b[3:0], p_0);
+	wallace w2(a[3:0], b[7:4], p_1);
+	wallace w3(a[7:4], b[3:0], p_2);
+	wallace w4(a[7:4], b[7:4], p_3);
 	
 	assign p = {8'b0, p_0} + {4'b0, p_1, 4'b0} + {4'b0, p_2, 4'b0} + {p_3, 8'b0};
 	
@@ -83,13 +83,13 @@ endmodule //mult8
 
 module mult16(input  [15:0] a,
 			  input  [15:0] b,
-			  output [31:0] p)
+			  output [31:0] p);
 	wire [15:0] p_0, p_1, p_2, p_3;
 	
-	mult8(a[7:0], b[7:0], p_0);
-	mult8(a[7:0], b[15:8], p_1);
-	mult8(a[15:8], b[7:0], p_2);
-	mult8(a[15:8], b[15:8], p_3);
+	mult8 m1(a[7:0], b[7:0], p_0);
+	mult8 m2(a[7:0], b[15:8], p_1);
+	mult8 m3(a[15:8], b[7:0], p_2);
+	mult8 m4(a[15:8], b[15:8], p_3);
 	
 	assign p = {16'b0, p_0} + {8'b0, p_1, 8'b0} + {8'b0, p_2, 8'b0} + {p_3, 16'b0};
 endmodule //mult16
