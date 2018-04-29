@@ -28,19 +28,24 @@ module calculator_state_machine(display, decimal_point, in, clock, reset, enable
 	wire is_mem    = (in == `E); //E
 	wire is_div    = (in == `F); //F
 	
-	wire operationStart = is_add | is_sub | is_mult;
-	wire operationChange = (sAdd_next != sAdd) | (sSub_next != sSub) | (sMult_next != sMult);
+	wire operationStart = is_add | is_sub | is_mult | is_div;
+	wire operationChange = (sAdd_next != sAdd) | (sSub_next != sSub) | (sMult_next != sMult) | (sDiv_next != sDiv);
 	
 	wire sEnable;
 	dffe fsEnable(sEnable, enable, clock, 1'b1, 1'b0);
 	
 	wire sClear; //In a state such that the previous result is cleared.
-	wire sClear_next = operationChange;
+	wire sClear_next = operationChange | sMem;
 	dffe fsClear(sClear, sClear_next, clock, sEnable, reset);
 	
 	wire sInput;
 	wire sInput_next = ~reset;
 	dffe fsInput(sInput, sInput_next, clock, sEnable, 1'b0);
+	
+	// output
+	wire sOut;
+	wire sOut_next = is_output & ~reset;
+	dffe fsOut(sOut, sOut_next, clock, sEnable, reset);
 	
 	wire [31:0] res_next_input_partial, res_next_input_pre, res_next_input, source;
 	// res_next = res * 10 + in
@@ -65,6 +70,7 @@ module calculator_state_machine(display, decimal_point, in, clock, reset, enable
 	
 		// multiplication
 		wire [31:0] res_next_calc_complex;
+		
 		wire [31:0] multRes;
 		wire sMult;
 		wire sMult_next = (is_mult | (sMult & in_is_num)) & ~reset & ~is_output;
@@ -73,22 +79,18 @@ module calculator_state_machine(display, decimal_point, in, clock, reset, enable
 		
 		//division
 		wire [31:0] divRes;
-		wire sDiv
-		wire sDiv_next = (sDiv | (sDiv & in_is_num)) & ~reset & ~is_output;
+		wire [15:0] divOut;
+		wire sDiv;
+		wire sDiv_next = (is_div | (sDiv & in_is_num)) & ~reset & ~is_output;
 		dffe fsDiv(sDiv, sDiv_next, clock, sEnable, reset);
+		divider div(previous, res, divRes);
 		
-		
-		assign res_next_calc_complex = multRes;
+		mux2v res_calc_complex_mux(res_next_calc_complex, multRes, divRes, sDiv);
 		
 		wire [31:0] calcRes, calcRes_pre;
 		
 	mux2v simple_complex(calcRes_pre, res_next_calc_complex, res_next_calc_simple, sAdd | sSub);
-	mux2v idleOrNot(calcRes, res, calcRes_pre, sAdd | sSub | sMult);
-	
-	// output
-	wire sOut;
-	wire sOut_next = is_output & ~reset;
-	dffe fsOut(sOut, sOut_next, clock, sEnable, reset);
+	mux2v idleOrNot(calcRes, res, calcRes_pre, sAdd | sSub | sMult | sDiv);
 	
 	// stack memory
 	wire sMem;
@@ -99,6 +101,7 @@ module calculator_state_machine(display, decimal_point, in, clock, reset, enable
 	register #(5) stack_Increment(stack_top, stack_top + 5'b1, clock, operationChange & sEnable, reset);
 	wire [4:0] pointer;
 	wire [4:0] pointer_next;
+	//Moving the stack pointer according to the state.
 	mux2v nextPointer(pointer_next, stack_top, pointer - 5'b1, sMem);
 	register #(5) pointer_Increment(pointer, pointer_next, clock, sEnable, reset);
 	
@@ -107,11 +110,11 @@ module calculator_state_machine(display, decimal_point, in, clock, reset, enable
 	
 	assign res_next = 	reset ? 32'h0
 						: sMem ? mem_out
-						: ((sAdd | sSub | sInput) & ~inOperationChain) ? res_next_input 
+						: ((sAdd | sSub | sMult | sDiv | sInput) & ~inOperationChain) ? res_next_input 
 						: (sOut | operationChange) ? calcRes  
 						: res;
 						
-	wire inOperationChain = (sAdd | sSub | sMult) & operationChange;
+	wire inOperationChain = (sAdd | sSub | sMult | sDiv) & operationChange;
 	
 	register update_prev(previous, res_next, clock, operationChange & sEnable, reset);
 						
